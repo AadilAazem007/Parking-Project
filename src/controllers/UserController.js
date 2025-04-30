@@ -1,25 +1,41 @@
 import pool from "../config/db.js"
-import argon2 from "argon2"
+import { userResource, decryptId } from "../helpers/userResource.js"
 
 class UserController
 {
-    static index(req, res)
-    {
-        res.send("This is list of user index")
-    }
-
     static async userList(req, res){
         try{
             const [users] = await pool.query("SELECT * FROM users")
+            let resourceData = await userResource(users)
             if(users)
             {
-                res.status(200).json({"status":200, "success":true, "message":"User List", "data":users})
+                res.status(200).json({"status":200, "success":true, "message":"User List", "data": resourceData})
             }
             else
             {
                 res.status(200).json({"status":200, "success":true, "message":"No User Found", "data":[]})
             }
-            
+        }
+        catch(error)
+        {
+            res.status(500).json({"status":500, "success":false, "message":"Something went wrong", "data":[]})
+        }
+    }
+
+
+    static async getUserById(req, res){
+        try{
+            const userId = decryptId(req.params.id)
+            const [user] = await pool.query("SELECT * FROM users WHERE id = ?", [userId])
+            let resourceData = await userResource(user)
+            if(user)
+            {
+                res.status(200).json({"status":200, "success":true, "message":"User List", "data":resourceData})
+            }
+            else
+            {
+                res.status(200).json({"status":200, "success":true, "message":"No User Found", "data":[]})
+            }
         }
         catch(error)
         {

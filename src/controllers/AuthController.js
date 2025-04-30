@@ -3,6 +3,7 @@ import argon2 from "argon2"
 import jwt from "jsonwebtoken"
 import knex from 'knex';
 import knexfile from '../../knexfile.js';
+import CommonHelper from "../helpers/CommonHelper.js";
 
 const db = knex(knexfile.development);
 
@@ -103,19 +104,19 @@ class AuthController
                 return res.status(400).json({ "status": 400, "success": false, "message": "All fields are required", "data": [] });
             }
 
-            const emailRegex = await AuthController.emailRegex(email);
+            const emailRegex = await CommonHelper.emailRegex(email);
             if (emailRegex === false) {
                 return res.status(400).json({ "status": 400, "success": false, "message": "Invalid email", "data": [] });
             }
 
-            const mobileRegex = await AuthController.checkMobileRegex(mobile);
+            const mobileRegex = await CommonHelper.checkMobileRegex(mobile);
             if (mobileRegex === false) {
                 return res.status(400).json({ "status": 400, "success": false, "message": "Invalid mobile number", "data": [] });
             }
 
             const hash = await argon2.hash(password);
 
-            const checkUser = await AuthController.checkUser(username, email, mobile);
+            const checkUser = await CommonHelper.checkUser(username, email, mobile);
             if (checkUser[0].length > 0) {
                 return res.status(400).json({ "status": 400, "success": false, "message": "User already exists", "data": checkUser[0] });
             }
@@ -220,24 +221,6 @@ class AuthController
             return res.status(500).json({ "status": 500, "success": false, "message": "Something went wrong", "data": [] });
         }
     }
-
-    static async checkUser(username, email, mobile) {
-        const query = "SELECT id, username, email, mobile FROM users WHERE username = ? OR email = ? OR mobile = ?";
-        return pool.query(query, [username, email, mobile]);
-    }
-
-    static async emailRegex(email)
-    {
-        const mailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return mailRegex.test(email)
-    }
-
-    static async checkMobileRegex(mobile)
-    {
-        const mobileRegex = /^\+?[1-9]\d{1,14}$/;
-        return mobileRegex.test(mobile)
-    }
-
 }
 
 export default AuthController
