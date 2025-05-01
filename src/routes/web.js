@@ -4,6 +4,7 @@ import AuthController from '../controllers/AuthController.js'
 import AdminController from '../controllers/AdminController.js'
 import VendorController from '../controllers/VendorController.js'
 import authValidator from '../middlewares/authValidator.js'
+import { uploadImage, handleUploadErrors } from '../middlewares/upload.js'
 const router = express.Router()
 
 //Admin Auth Routes
@@ -11,7 +12,7 @@ router.post('/admin-register', AdminController.AdminRegister)
 router.post('/admin-login', AdminController.AdminLogin)
 
 //User Auth Routes (This Routes for users)
-router.post('/register', AuthController.Register)
+router.post('/register', [uploadImage, handleUploadErrors], AuthController.Register)
 router.post('/login', AuthController.Login)
 router.post('/sendOTP', AuthController.sendOTP)
 router.post('/activateUser', AuthController.activateUser)

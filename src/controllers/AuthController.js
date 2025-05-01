@@ -5,6 +5,7 @@ import knex from 'knex';
 import knexfile from '../../knexfile.js';
 import CommonHelper from "../helpers/CommonHelper.js";
 import { validateFields } from "../helpers/CommonFunctions.js";
+import { uploadImage, handleUploadErrors } from "../middlewares/upload.js";
 
 const db = knex(knexfile.development);
 
@@ -99,10 +100,18 @@ class AuthController
 
     static async Register(req, res) {
         try {
+            await new Promise((resolve, reject) => {
+                uploadImage(req, res, (err) => {
+                    if (err) return reject(err);
+                    resolve();
+                });
+            });
+
             const { name, username, email, password, mobile, city, address } = req.body;
+            const image = req.file ? req.file.buffer : null;
 
             // This validateFields function is from CommonFunctions.js and created by Aadil Aazem
-            const validationError = validateFields({ name: name, username: username, email: email, password: password, mobile: mobile, city: city, address: address })
+            const validationError = validateFields({ name: name, username: username, email: email, password: password, mobile: mobile, city: city, address: address, image: req.file })
               if (validationError) {
                 return res.status(400).json({ status: 400, success: false, message: validationError, data: [] });
             }
@@ -125,8 +134,8 @@ class AuthController
             }
 
             const [user] = await pool.query(
-                "INSERT INTO users (name, username, email, password, mobile, city, address) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                [name, username, email, hash, mobile, city, address]
+                "INSERT INTO users (name, username, email, password, mobile, city, address, image) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                [name, username, email, hash, mobile, city, address, image]
             );
 
             return res.status(201).json({ "status": 201, "success": true, "message": "User inserted successfully", "data": { id: user.insertId } });
