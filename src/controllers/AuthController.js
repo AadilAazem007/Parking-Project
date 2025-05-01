@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken"
 import knex from 'knex';
 import knexfile from '../../knexfile.js';
 import CommonHelper from "../helpers/CommonHelper.js";
+import { validateFields } from "../helpers/CommonFunctions.js";
 
 const db = knex(knexfile.development);
 
@@ -100,16 +101,18 @@ class AuthController
         try {
             const { name, username, email, password, mobile, city, address } = req.body;
 
-            if (!name || !username || !email || !password || !mobile || !city || !address) {
-                return res.status(400).json({ "status": 400, "success": false, "message": "All fields are required", "data": [] });
+            // This validateFields function is from CommonFunctions.js and created by Aadil Aazem
+            const validationError = validateFields({ name: name, username: username, email: email, password: password, mobile: mobile, city: city, address: address })
+              if (validationError) {
+                return res.status(400).json({ status: 400, success: false, message: validationError, data: [] });
             }
 
-            const emailRegex = await CommonHelper.emailRegex(email);
+            const emailRegex = CommonHelper.emailRegex(email);
             if (emailRegex === false) {
                 return res.status(400).json({ "status": 400, "success": false, "message": "Invalid email", "data": [] });
             }
 
-            const mobileRegex = await CommonHelper.checkMobileRegex(mobile);
+            const mobileRegex = CommonHelper.checkMobileRegex(mobile);
             if (mobileRegex === false) {
                 return res.status(400).json({ "status": 400, "success": false, "message": "Invalid mobile number", "data": [] });
             }

@@ -4,6 +4,11 @@ class CommonHelper{
         const query = "SELECT id, username, email, mobile FROM users WHERE username = ? OR email = ? OR mobile = ?";
         return pool.query(query, [username, email, mobile]);
     }
+
+    static checkAdmin(username, email, mobile) {
+        const query = "SELECT id, username, email, mobile FROM admins WHERE username = ? OR email = ? OR mobile = ?";
+        return pool.query(query, [username, email, mobile]);
+    }
     
     static emailRegex(email)
     {
