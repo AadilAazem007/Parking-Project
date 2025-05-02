@@ -3,6 +3,8 @@ import userResource from "../resources/userResource.js"
 import { decryptId } from "../helpers/CommonFunctions.js"
 import CommonHelper from "../helpers/CommonHelper.js"
 import { validateFields } from "../helpers/CommonFunctions.js"
+import path from 'path';
+import fs from 'fs';
 
 class UserController
 {
@@ -89,27 +91,49 @@ class UserController
         }
     }
 
-    static async deleteUser(req, res)
-    {
-        try{
-            const userId = decryptId(req.params.id)
-            const [user] = await pool.query("SELECT * FROM users WHERE id = ?", [userId])
-            if(user.length > 0)
-            {
-                const [deleteUser] = await pool.query("DELETE FROM users WHERE id = ?", [userId])
-                if(deleteUser['affectedRows'] === 1)
-                {
-                    res.status(200).json({"status":200, "success":true, "message":"User Deleted", "data":[]})
+    static async deleteUser(req, res) {
+        try {
+            const userId = decryptId(req.params.id);
+            const [user] = await pool.query("SELECT image FROM users WHERE id = ?", [userId]);
+            
+            if (user.length === 0) {
+                return res.status(404).json({ status: 404, success: false, message: "User not found", data: [] });
+            }
+    
+            // Delete the image file from uploads folder
+            if (user[0].image) {
+                const imagePath = path.join('src/uploads', user[0].image.replace('/src/uploads/', ''));
+                if (fs.existsSync(imagePath)) {
+                    fs.unlinkSync(imagePath); // Delete the file
                 }
             }
-            else
-            {
-                res.status(200).json({"status":200, "success":true, "message":"No User Found", "data":[]})
-            }
+    
+            // Delete the user from database
+            await pool.query("DELETE FROM users WHERE id = ?", [userId]);
+            return res.status(200).json({ status: 200, success: true, message: "User deleted successfully", data: [] });
+        } catch (error) {
+            console.error('Error in DeleteUser:', error);
+            return res.status(500).json({ status: 500, success: false, message: "Failed to delete user", data: [] });
         }
-        catch(error)
-        {
-            res.status(500).json({"status":500, "success":false, "message":"Something went wrong", "data":[]})
+    }
+
+    static async GetUserImage(req, res) {
+        try {
+            const userId = decryptId(req.params.id);
+            const [rows] = await pool.query(
+                "SELECT image FROM users WHERE id = ?",
+                [userId]
+            );
+
+            if (rows.length === 0 || !rows[0].image) {
+                return res.status(404).json({ status: 404, success: false, message: "Image not found", data: [] });
+            }
+
+            // Return the image path
+            return res.json({ status: 200, success: true, message: "Image path retrieved", data: { imagePath: rows[0].image } });
+        } catch (error) {
+            console.error('Error in GetUserImage:', error);
+            return res.status(500).json({ status: 500, success: false, message: "Failed to retrieve image", data: [] });
         }
     }
 }

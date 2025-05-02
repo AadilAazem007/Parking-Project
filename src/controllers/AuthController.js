@@ -5,7 +5,9 @@ import knex from 'knex';
 import knexfile from '../../knexfile.js';
 import CommonHelper from "../helpers/CommonHelper.js";
 import { validateFields } from "../helpers/CommonFunctions.js";
-import { uploadImage, handleUploadErrors } from "../middlewares/upload.js";
+import { uploadImage } from "../middlewares/upload.js";
+import path from 'path';
+import fs from 'fs';
 
 const db = knex(knexfile.development);
 
@@ -100,51 +102,55 @@ class AuthController
 
     static async Register(req, res) {
         try {
-            await new Promise((resolve, reject) => {
-                uploadImage(req, res, (err) => {
-                    if (err) return reject(err);
-                    resolve();
-                });
-            });
-
             const { name, username, email, password, mobile, city, address } = req.body;
-            const image = req.file ? req.file.buffer : null;
-
-            // This validateFields function is from CommonFunctions.js and created by Aadil Aazem
-            const validationError = validateFields({ name: name, username: username, email: email, password: password, mobile: mobile, city: city, address: address, image: req.file })
-              if (validationError) {
+            
+            const validationError = validateFields({ name, username, email, password, mobile, city, address, image: req.file });
+            if (validationError) {
                 return res.status(400).json({ status: 400, success: false, message: validationError, data: [] });
             }
 
             const emailRegex = CommonHelper.emailRegex(email);
             if (emailRegex === false) {
-                return res.status(400).json({ "status": 400, "success": false, "message": "Invalid email", "data": [] });
+                return res.status(400).json({ status: 400, success: false, message: "Invalid email", data: [] });
             }
 
             const mobileRegex = CommonHelper.checkMobileRegex(mobile);
             if (mobileRegex === false) {
-                return res.status(400).json({ "status": 400, "success": false, "message": "Invalid mobile number", "data": [] });
+                return res.status(400).json({ status: 400, success: false, message: "Invalid mobile number", data: [] });
             }
 
             const hash = await argon2.hash(password);
-
             const checkUser = await CommonHelper.checkUser(username, email, mobile);
             if (checkUser[0].length > 0) {
-                return res.status(400).json({ "status": 400, "success": false, "message": "User already exists", "data": checkUser[0] });
+                return res.status(400).json({ status: 400, success: false, message: "User already exists", data: checkUser[0] });
             }
 
-            const [user] = await pool.query(
-                "INSERT INTO users (name, username, email, password, mobile, city, address, image) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                [name, username, email, hash, mobile, city, address, image]
-            );
+            let imagePath = null;
+            if (req.file) {
+                const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+                const ext = path.extname(req.file.originalname);
+                imagePath = `/src/uploads/${uniqueSuffix}${ext}`;
+                const filePath = path.join('src/uploads', `${uniqueSuffix}${ext}`);
 
-            return res.status(201).json({ "status": 201, "success": true, "message": "User inserted successfully", "data": { id: user.insertId } });
+                if (!fs.existsSync('src/uploads')) {
+                    fs.mkdirSync('src/uploads', { recursive: true });
+                }
+
+                fs.writeFileSync(filePath, req.file.buffer);
+            }
+
+                const [user] = await pool.query(
+                    "INSERT INTO users (name, username, email, password, mobile, city, address, image) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    [name, username, email, hash, mobile, city, address, imagePath]
+                );
+
+                return res.status(201).json({ status: 201, success: true, message: "User inserted successfully", data: { id: user.insertId } });
         } catch (error) {
             if (error.code === 'ER_DUP_ENTRY') {
-                return res.status(400).json({ "status": 400, "success": false, "message": "Duplicate username, email, or mobile", "data": [] });
+                return res.status(400).json({ status: 400, success: false, message: "Duplicate username, email, or mobile", data: [] });
             }
-            console.error('Error:', error);
-            return res.status(500).json({ "status": 500, "success": false, "message": "Something went wrong", "data": [] });
+            console.error('Error in Register:', error);
+            return res.status(500).json({ status: 500, success: false, message: "Something went wrong", data: [] });
         }
     }
 

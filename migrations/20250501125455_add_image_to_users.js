@@ -1,6 +1,6 @@
 export async function up(knex) {
     await knex.schema.alterTable('users', (table) => {
-      table.binary('image').nullable().after('address');
+      table.string('image', 255).nullable().after('address');
       });
   }
   

@@ -9,6 +9,7 @@ const userResource = async (users) => {
         city: user.city,
         address: user.address,
         is_active: user.is_active,
+        image: user.image,
         created_at: user.created_at,
         updated_at: user.updated_at
     })));
